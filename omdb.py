@@ -1,7 +1,7 @@
 import os
 import requests
 from requests.exceptions import HTTPError
-# API_KEY = '1033d244'
+
 API_KEY = os.environ.get('API_KEY')
 
 
