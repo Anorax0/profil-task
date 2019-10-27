@@ -1,8 +1,8 @@
 import os
 import requests
 from requests.exceptions import HTTPError
-
-API_KEY = os.environ.get('API_KEY')
+API_KEY = '1033d244'
+# API_KEY = os.environ.get('API_KEY')
 
 
 def get_movie_data(movie):
@@ -22,4 +22,4 @@ def get_movie_data(movie):
 
 
 if __name__ == '__main__':
-    print(get_movie_data('The Green Mile'))
+    print(get_movie_data('Ben Hur'))

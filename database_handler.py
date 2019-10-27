@@ -25,8 +25,57 @@ class Movies(object):
     def _close(self):
         self.sql_connection.close()
 
+    def get_movies_list(self):
+        """
+        Returns list of movies' titles from database
+        :return: list
+        """
+        self._open()
+        movies_list = self.c.execute('SELECT title FROM movies').fetchall()
+        self._close()
+        return movies_list
+
     def __str__(self):
         return f'{self.title}, {self.year}'
+
+
+class MoviesSorted(Movies):
+    def __init__(self):
+        super(MoviesSorted, self).__init__()
+
+    def sort_by(self, selection=('title', ), order_by=('year', ), order_way="DESC", query_limit=10):
+
+        self._open()
+        output = None
+        selection_format = ', '.join((str(x) for x in selection))
+        order_by_format = ', '.join(str(x) for x in order_by)
+
+        if 'cast' in selection_format and 'cast' in order_by_format:
+            selection_format = selection_format.replace("cast", "\"CAST\"")
+            order_by_format = order_by_format.replace("cast", "\"CAST\"")
+
+        try:
+            query = "SELECT {} FROM movies ORDER BY {} {} LIMIT {}".format(selection_format,
+                                                                           order_by_format,
+                                                                           order_way,
+                                                                           query_limit)
+            output = self.c.execute(query).fetchall()
+
+        except sqlite3.OperationalError as e:
+            output = 'You are trying to access not existing value: ', e
+        finally:
+            self._close()
+            return output
+
+    def highscored(self):
+        highscored = []
+        highscored.append(self.sort_by(selection=['title', 'runtime'], order_by=['Runtime'], query_limit=1))
+        highscored.append(self.sort_by(selection=['title', 'box_office'], order_by=['Box_Office'], query_limit=1))
+        # highscored.append(self.sort_by(order_by=['awards'], query_limit=1))
+        # highscored.append(self.sort_by(order_by=['nominations'], query_limit=1))
+        # highscored.append(self.sort_by(order_by=['oscars'], query_limit=1))
+        # highscored.append(self.sort_by(order_by=['imdb_dating'], query_limit=1))
+        return highscored
 
 
 class MovieDB(Movies):
@@ -48,19 +97,6 @@ class MovieDB(Movies):
                 self.sql_connection.commit()
                 self._close()
         return None
-
-    def get_movies_list(self):
-        """
-        Returns list of movies' titles from database
-        :return: list
-        """
-        self._open()
-
-        movies_list = self.c.execute('SELECT title FROM movies').fetchall()
-
-        self._close()
-        print(type(movies_list))
-        return movies_list
 
     def get_movie_from_db(self, movie_title=None):
         """
@@ -138,7 +174,10 @@ class MovieDB(Movies):
 
         self.title = movie_data.get('Title', None)
         self.year = movie_data.get('Year', None)
-        self.runtime = movie_data.get('Runtime', None)
+        if movie_data.get('Runtime', None).split()[0].isdigit():
+            self.runtime = int(movie_data.get('Runtime', None).split()[0])
+        else:
+            self.runtime = 'N/A'
         self.genre = movie_data.get('Genre', None)
         self.director = movie_data.get('Director', None)
         self.cast = movie_data.get('Actors', None)
@@ -146,18 +185,18 @@ class MovieDB(Movies):
         self.language = movie_data.get('Language', None)
         self.country = movie_data.get('Country', None)
         self.awards = movie_data.get('Awards', None)
-        self.imdb_rating = movie_data.get('imdbRating', None)
-        self.imdb_votes = movie_data.get('imdbVotes', None)
-        self.box_office = movie_data.get('BoxOffice', None)
+        self.imdb_rating = float(movie_data.get('imdbRating', None))
+        self.imdb_votes = int((movie_data.get('imdbVotes', None)).replace(",", ""))
+        if movie_data.get('BoxOffice', None) != 'N/A' and movie_data.get('BoxOffice', None) is not None:
+            self.box_office = int(movie_data.get('BoxOffice', None)[1:].replace(",", ""))
 
         return self.save()
 
 
 if __name__ == '__main__':
-    # module tests
+    # module's tests
+    # from pprint import pprint
     movie = MovieDB()
-    movie.get_movies_list()
-    # movie.get_movie_from_db('The Green Mile')
-    # print(movie.title)
-    # print(movie.year)
-    # print(movie.genre, movie.country)
+    movie.update_movie('Coco')
+    print(movie.imdb_votes)
+    print(type(movie.imdb_votes))

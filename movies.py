@@ -1,5 +1,5 @@
 import sys
-from database_handler import MovieDB
+from database_handler import MovieDB, MoviesSorted
 from usage import description
 
 
@@ -19,10 +19,38 @@ def main():
             print(f'[{i}/{movies_len}] Movie "{movie[0]}" updated.')
         print('Movies Database updated.')
 
+    # This is needed due to extra spaces in titles in DB, which made querying quite difficult
+    elif 'clean' in sys.argv:
+        cleaning = MovieDB()
+        cleaning.clean()
+        print('Database cleaned.')
+
     # update just one certain movie in db
     elif 'update' in sys.argv and len(sys.argv) == 3:
         movie = MovieDB()
         print(movie.update_movie(sys.argv[2]))
+
+    elif '--sort_by' in sys.argv or '-s' in sys.argv:
+        movies = MoviesSorted()
+        limit = 10
+        order_way = 'DESC'
+        selection = (", ".join([str(x) for x in sys.argv[2:] if not x.isdigit()])).lower()
+        if sys.argv[-1].isdigit():
+            limit = int(sys.argv[-1])
+        print('----', selection)
+
+        sorted_movies_list = movies.sort_by(selection=['title', selection],
+                                            order_by=[selection],
+                                            query_limit=limit)
+        for sorted_movie in sorted_movies_list:
+            print(sorted_movie)
+
+    elif '--highscores' in sys.argv or '-hs' in sys.argv:
+        movies = MoviesSorted()
+        highscored_list = movies.highscored()
+        for highscored in highscored_list:
+            print(highscored)
+
     else:
         print(description)
         sys.exit()
