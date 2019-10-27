@@ -43,7 +43,7 @@ class MoviesSorted(Movies):
     def __init__(self):
         super(MoviesSorted, self).__init__()
 
-    def sort_by(self, selection=('title', ), order_by=('year', ), order_way="DESC", query_limit=10):
+    def sort_by(self, selection=('title', ), where_clause=None, order_by=('year', ), order_way="DESC", query_limit=10):
 
         self._open()
         output = None
@@ -55,10 +55,11 @@ class MoviesSorted(Movies):
             order_by_format = order_by_format.replace("cast", "\"CAST\"")
 
         try:
-            query = "SELECT {} FROM movies ORDER BY {} {} LIMIT {}".format(selection_format,
-                                                                           order_by_format,
-                                                                           order_way,
-                                                                           query_limit)
+            query = "SELECT {} FROM movies {} ORDER BY {} {} LIMIT {}".format(selection_format,
+                                                                              where_clause,
+                                                                              order_by_format,
+                                                                              order_way,
+                                                                              query_limit)
             output = self.c.execute(query).fetchall()
 
         except sqlite3.OperationalError as e:
@@ -68,13 +69,13 @@ class MoviesSorted(Movies):
             return output
 
     def highscored(self):
-        highscored = []
-        highscored.append(self.sort_by(selection=['title', 'runtime'], order_by=['Runtime'], query_limit=1))
-        highscored.append(self.sort_by(selection=['title', 'box_office'], order_by=['Box_Office'], query_limit=1))
-        # highscored.append(self.sort_by(order_by=['awards'], query_limit=1))
+        highscored = [self.sort_by(selection=['title', 'runtime'], where_clause='WHERE runtime != "N/A"',
+                                   order_by=['Runtime'], query_limit=1),
+                      self.sort_by(selection=['title', 'box_office'], order_by=['Box_Office'], query_limit=1),
+                      self.sort_by(selection=['title', 'awards'], order_by=['AWARDS'], query_limit=1),
         # highscored.append(self.sort_by(order_by=['nominations'], query_limit=1))
         # highscored.append(self.sort_by(order_by=['oscars'], query_limit=1))
-        # highscored.append(self.sort_by(order_by=['imdb_dating'], query_limit=1))
+                      self.sort_by(selection=['title', 'IMDb_Rating'], order_by=['imdb_rating'], query_limit=1)]
         return highscored
 
 

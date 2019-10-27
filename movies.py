@@ -49,7 +49,7 @@ def main():
         movies = MoviesSorted()
         highscored_list = movies.highscored()
         for highscored in highscored_list:
-            print(highscored)
+            print(highscored[0][0], ':',  highscored[0][1])
 
     else:
         print(description)
