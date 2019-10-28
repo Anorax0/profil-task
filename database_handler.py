@@ -68,14 +68,36 @@ class MoviesSorted(Movies):
             self._close()
             return output
 
+    def extract(self, query, looking_for):
+        for x in query:
+            search = x[1].index(looking_for)
+            print(x[0], x[1].split())
+        return
+
     def highscored(self):
-        highscored = [self.sort_by(selection=['title', 'runtime'], where_clause='WHERE runtime != "N/A"',
-                                   order_by=['Runtime'], query_limit=1),
-                      self.sort_by(selection=['title', 'box_office'], order_by=['Box_Office'], query_limit=1),
-                      self.sort_by(selection=['title', 'awards'], order_by=['AWARDS'], query_limit=1),
-        # highscored.append(self.sort_by(order_by=['nominations'], query_limit=1))
-        # highscored.append(self.sort_by(order_by=['oscars'], query_limit=1))
-                      self.sort_by(selection=['title', 'IMDb_Rating'], order_by=['imdb_rating'], query_limit=1)]
+        highscored = [('Runtime', self.sort_by(selection=['title', 'runtime'],
+                                               where_clause='WHERE runtime != "N/A"',
+                                               order_by=['Runtime'],
+                                               query_limit=1)),
+                      ('Box Office', self.sort_by(selection=['title', 'box_office'],
+                                                  order_by=['Box_Office'],
+                                                  query_limit=1)),
+                      ('Awards won', self.sort_by(selection=['title', 'awards'],
+                                                  where_clause='WHERE awards LIKE \'Won%Oscars%\'',
+                                                  order_by=['AWARDS'],
+                                                  query_limit=1)),
+                      ('--------Nominations', self.extract(self.sort_by(selection=['title', 'awards'],
+                                                                        where_clause='WHERE awards LIKE \'Won%Oscars%\'',
+                                                                        order_by=['AWARDS'],
+                                                                        query_limit=100),
+                                                           'nominations')),
+                      # ('Oscars', self.sort_by(selection=['title', 'awards'],
+                      #                         where_clause='WHERE awards LIKE \'Won%Oscars%\'',
+                      #                         order_by=['AWARDS'],
+                      #                         query_limit=1)),
+                      ('Imdb Rating', self.sort_by(selection=['title', 'IMDb_Rating'],
+                                                   order_by=['imdb_rating'],
+                                                   query_limit=1))]
         return highscored
 
 
@@ -196,8 +218,10 @@ class MovieDB(Movies):
 
 if __name__ == '__main__':
     # module's tests
-    # from pprint import pprint
-    movie = MovieDB()
-    movie.update_movie('Coco')
-    print(movie.imdb_votes)
-    print(type(movie.imdb_votes))
+    from pprint import pprint
+    movie = MoviesSorted()
+    movie.extract(movie.sort_by(selection=['title', 'awards'],
+                                       where_clause='WHERE awards LIKE \'%nominations%\'',
+                                       order_by=['AWARDS'],
+                                       query_limit=1000),
+                         'nominations')
