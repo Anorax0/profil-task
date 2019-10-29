@@ -15,7 +15,9 @@ def main():
         movies_len = len(movies_list)
         print('Updating Movies Database. Please wait.')
         for i, movie in enumerate(movies_list):
-            movies.update_movie(movie[0])
+            certain_movie = MovieDB()
+            certain_movie.update_movie(movie[0])
+            del certain_movie
             print(f'[{i}/{movies_len}] Movie "{movie[0]}" updated.')
         print('Movies Database updated.')
 
@@ -47,9 +49,14 @@ def main():
 
     elif '--highscores' in sys.argv or '-hs' in sys.argv:
         movies = MoviesSorted()
-        highscored_list = movies.highscored()
-        for highscored in highscored_list:
-            print('{}: {} - {}'.format(highscored[0], highscored[1][0][0], highscored[1][0][1]))
+        highscored = movies.highscored()
+        print('Runtime:', highscored['Runtime'][0][0], highscored['Runtime'][0][1])
+        print('Box Office:', highscored['Box Office'][0][0], '$'+str(format(highscored['Box Office'][0][1], ",")))
+        print('Oscars:', highscored['Nominations'][0][0], highscored['Nominations'][0][1])
+        print('Nominations:', highscored['Nominations'][1][0], highscored['Nominations'][1][1])
+        print('Awards Won:', highscored['Nominations'][2][0], highscored['Nominations'][2][1])
+        print('Imdb Rating:', highscored['Imdb Rating'][0][0], highscored['Imdb Rating'][0][1])
+
 
     else:
         print(description)

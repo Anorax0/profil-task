@@ -43,7 +43,8 @@ class MoviesSorted(Movies):
     def __init__(self):
         super(MoviesSorted, self).__init__()
 
-    def sort_by(self, selection=('title', ), where_clause=None, order_by=('year', ), order_way="DESC", query_limit=10):
+    def sort_by(self, selection=('title', ), where_clause=None, order_by=('year', ), order_way="DESC", query_limit=10,
+                value=None):
 
         self._open()
         output = None
@@ -54,6 +55,10 @@ class MoviesSorted(Movies):
             selection_format = selection_format.replace("cast", "\"CAST\"")
             order_by_format = order_by_format.replace("cast", "\"CAST\"")
 
+        if value in ['int']:
+            max_limit = len(self.c.execute("SELECT id FROM movies").fetchall())
+            query_limit = max_limit
+
         try:
             query = "SELECT {} FROM movies {} ORDER BY {} {} LIMIT {}".format(selection_format,
                                                                               where_clause,
@@ -63,41 +68,66 @@ class MoviesSorted(Movies):
             output = self.c.execute(query).fetchall()
 
         except sqlite3.OperationalError as e:
-            output = 'You are trying to access not existing value: ', e
+            output = ['You are trying to access not existing value: ', e]
         finally:
+            # it is only needed to check max of the runtime
+            # if value in ['int']:
+            #     # output = []
+            #     for x in output:
+            #         if x[1] is not None:
+            #             if x[1].isdigit():
+            #                 output[output.index(x)] = [x[0], int(x[1])]
+            #                 print(output)
+            #                 # output = output.sort(key=x[1])
+
             self._close()
             return output
 
-    def extract(self, query, looking_for):
+    @staticmethod
+    def extract_tops(query):
+        top_oscars = ['title', 0]
+        top_nominations = ['title', 0]
+        top_other_wins = ['title', 0]
         for x in query:
-            search = x[1].index(looking_for)
-            print(x[0], x[1].split())
-        return
+            search = x[1].split()
+            if 'Oscars.' in search and isinstance((search.index('Oscars.')-1), int)\
+                    and search[search.index('Oscars.')-2] == 'Won':
+                if int(search[1]) > top_oscars[1]:
+                    top_oscars = [x[0], int(search[1])]
+
+            if 'nominations.' in search and isinstance((search.index('nominations.')-1), int):
+                if int(search[search.index('nominations.')-1]) > top_nominations[1]:
+                    top_nominations = [x[0], int(search[search.index('nominations.')-1])]
+
+            if 'wins' in search and isinstance((search.index('wins')-1), int):
+                if int(search[search.index('wins')-1]) > top_other_wins[1]:
+                    top_other_wins = [x[0], int(search[search.index('wins')-1])]
+
+        return top_oscars, top_nominations, top_other_wins
+
+    def get_top_runtime(self):
+        self._open()
+        top_runtime = self.c.execute("SELECT CAST(runtime AS INT) FROM movies ORDER BY runtime DESC").fetchall()
+        print(top_runtime)
+        self._close()
+        return top_runtime
 
     def highscored(self):
-        highscored = [('Runtime', self.sort_by(selection=['title', 'runtime'],
-                                               where_clause='WHERE runtime != "N/A"',
-                                               order_by=['Runtime'],
-                                               query_limit=1)),
-                      ('Box Office', self.sort_by(selection=['title', 'box_office'],
-                                                  order_by=['Box_Office'],
-                                                  query_limit=1)),
-                      ('Awards won', self.sort_by(selection=['title', 'awards'],
-                                                  where_clause='WHERE awards LIKE \'Won%Oscars%\'',
-                                                  order_by=['AWARDS'],
-                                                  query_limit=1)),
-                      ('--------Nominations', self.extract(self.sort_by(selection=['title', 'awards'],
-                                                                        where_clause='WHERE awards LIKE \'Won%Oscars%\'',
-                                                                        order_by=['AWARDS'],
-                                                                        query_limit=100),
-                                                           'nominations')),
-                      # ('Oscars', self.sort_by(selection=['title', 'awards'],
-                      #                         where_clause='WHERE awards LIKE \'Won%Oscars%\'',
-                      #                         order_by=['AWARDS'],
-                      #                         query_limit=1)),
-                      ('Imdb Rating', self.sort_by(selection=['title', 'IMDb_Rating'],
-                                                   order_by=['imdb_rating'],
-                                                   query_limit=1))]
+        highscored = {
+            # 'Runtime': self.c.execute("SELECT CAST(runtime AS INT) FROM movies ORDER BY runtime DESC"),
+            'Runtime': self.get_top_runtime(),
+                      'Box Office': self.sort_by(selection=['title', 'box_office'],
+                                                 order_by=['Box_Office'],
+                                                 query_limit=1),
+                      'Nominations': self.extract_tops(self.sort_by(selection=['title', 'awards'],
+                                                                    where_clause='WHERE awards LIKE \'Won%Oscars%\'',
+                                                                    order_by=['AWARDS'],
+                                                                    query_limit=100)),
+                      'Imdb Rating': self.sort_by(selection=['title', 'IMDb_Rating'],
+                                                  order_by=['imdb_rating'],
+                                                  query_limit=1)}
+        # from pprint import pprint
+        # pprint(highscored['Runtime'])
         return highscored
 
 
@@ -220,8 +250,14 @@ if __name__ == '__main__':
     # module's tests
     from pprint import pprint
     movie = MoviesSorted()
-    movie.extract(movie.sort_by(selection=['title', 'awards'],
-                                       where_clause='WHERE awards LIKE \'%nominations%\'',
-                                       order_by=['AWARDS'],
-                                       query_limit=1000),
-                         'nominations')
+
+    # s = movie.sort_by(selection=['title', 'runtime'], order_by=['runtime'], value='int')
+    # print(s)
+    hs = movie.highscored()
+    # print(hs['Runtime'])
+    # print('Runtime:', hs['Runtime'][0][0], hs['Runtime'][0][1])
+    # print('Box Office:', hs['Box Office'][0][0], hs['Box Office'][0][1])
+    # print('Oscars:', hs['Nominations'][0][0], hs['Nominations'][0][1])
+    # print('Nominations:', hs['Nominations'][1][0], hs['Nominations'][1][1])
+    # print('Awards Won:', hs['Nominations'][2][0], hs['Nominations'][2][1])
+    # print('Imdb Rating:', hs['Imdb Rating'][0][0], hs['Imdb Rating'][0][1])
