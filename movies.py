@@ -50,12 +50,12 @@ def main():
     elif '--highscores' in sys.argv or '-hs' in sys.argv:
         movies = MoviesSorted()
         highscored = movies.highscored()
-        print('Runtime:', highscored['Runtime'][0][0], highscored['Runtime'][0][1])
+        print('Runtime:', highscored['Runtime'][0], highscored['Runtime'][1]+'m')
         print('Box Office:', highscored['Box Office'][0][0], '$'+str(format(highscored['Box Office'][0][1], ",")))
         print('Oscars:', highscored['Nominations'][0][0], highscored['Nominations'][0][1])
         print('Nominations:', highscored['Nominations'][1][0], highscored['Nominations'][1][1])
         print('Awards Won:', highscored['Nominations'][2][0], highscored['Nominations'][2][1])
-        print('Imdb Rating:', highscored['Imdb Rating'][0][0], highscored['Imdb Rating'][0][1])
+        print('Imdb Rating:', highscored['Imdb Rating'][0][0], str(highscored['Imdb Rating'][0][1])+'/10')
 
 
     else:

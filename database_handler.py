@@ -4,6 +4,9 @@ from omdb import get_movie_data
 
 class Movies(object):
     def __init__(self):
+        """
+        Initialize basic movie instance - it needs to be reinitialized or delete/create every time new instance is created
+        """
         self.title = None
         self.year = None
         self.runtime = None
@@ -19,11 +22,21 @@ class Movies(object):
         self.box_office = None
 
     def _open(self):
+        """
+        Opens connection with database
+        :return: None
+        """
         self.sql_connection = sqlite3.connect('Backend_movies.sqlite')
         self.c = self.sql_connection.cursor()
+        return None
 
     def _close(self):
+        """
+        Closes connection with database
+        :return: None
+        """
         self.sql_connection.close()
+        return None
 
     def get_movies_list(self):
         """
@@ -41,11 +54,15 @@ class Movies(object):
 
 class MoviesSorted(Movies):
     def __init__(self):
+        """
+        Initialize class instance as child of Movies class
+        """
         super(MoviesSorted, self).__init__()
 
     def sort_by(self, selection=('title', ), where_clause=None, order_by=('year', ), order_way="DESC", query_limit=10,
                 value=None):
 
+        # opens db connection
         self._open()
         output = None
         selection_format = ', '.join((str(x) for x in selection))
@@ -70,16 +87,6 @@ class MoviesSorted(Movies):
         except sqlite3.OperationalError as e:
             output = ['You are trying to access not existing value: ', e]
         finally:
-            # it is only needed to check max of the runtime
-            # if value in ['int']:
-            #     # output = []
-            #     for x in output:
-            #         if x[1] is not None:
-            #             if x[1].isdigit():
-            #                 output[output.index(x)] = [x[0], int(x[1])]
-            #                 print(output)
-            #                 # output = output.sort(key=x[1])
-
             self._close()
             return output
 
@@ -106,33 +113,37 @@ class MoviesSorted(Movies):
         return top_oscars, top_nominations, top_other_wins
 
     def get_top_runtime(self):
+        """
+        Returns list of (title:str, rating:str) of highest runtime
+        :return: list
+        """
         self._open()
-        top_runtime = self.c.execute("SELECT CAST(runtime AS INT) FROM movies ORDER BY runtime DESC").fetchall()
-        print(top_runtime)
+        top_runtime = self.c.execute("SELECT title, runtime FROM movies ORDER BY CAST(runtime AS INT) DESC").fetchone()
         self._close()
         return top_runtime
 
     def highscored(self):
         highscored = {
-            # 'Runtime': self.c.execute("SELECT CAST(runtime AS INT) FROM movies ORDER BY runtime DESC"),
+            # I wanted to write runtime using sort_by method, but after a long time coding that, I use this, easier.
             'Runtime': self.get_top_runtime(),
-                      'Box Office': self.sort_by(selection=['title', 'box_office'],
-                                                 order_by=['Box_Office'],
-                                                 query_limit=1),
-                      'Nominations': self.extract_tops(self.sort_by(selection=['title', 'awards'],
-                                                                    where_clause='WHERE awards LIKE \'Won%Oscars%\'',
-                                                                    order_by=['AWARDS'],
-                                                                    query_limit=100)),
-                      'Imdb Rating': self.sort_by(selection=['title', 'IMDb_Rating'],
-                                                  order_by=['imdb_rating'],
-                                                  query_limit=1)}
-        # from pprint import pprint
-        # pprint(highscored['Runtime'])
+            'Box Office': self.sort_by(selection=['title', 'box_office'],
+                                       order_by=['Box_Office'],
+                                       query_limit=1),
+            'Nominations': self.extract_tops(self.sort_by(selection=['title', 'awards'],
+                                                          where_clause='WHERE awards LIKE \'Won%Oscars%\'',
+                                                          order_by=['AWARDS'],
+                                                          query_limit=100)),
+            'Imdb Rating': self.sort_by(selection=['title', 'IMDb_Rating'],
+                                        order_by=['imdb_rating'],
+                                        query_limit=1)}
         return highscored
 
 
 class MovieDB(Movies):
     def __init__(self):
+        """
+        Initialize class instance as child of Movies class
+        """
         super(MovieDB, self).__init__()
 
     def clean(self):
@@ -153,9 +164,9 @@ class MovieDB(Movies):
 
     def get_movie_from_db(self, movie_title=None):
         """
-        Updates instance's variable with data from database
-        :param movie_title:
-        :return:
+        Updates instance's variable with data from database - needs to be reinit, delete/create with every new instance
+        :param movie_title: str
+        :return: None
         """
         if movie_title is None:
             movie_title = self.title
@@ -163,6 +174,8 @@ class MovieDB(Movies):
 
         movie_data = self.c.execute('SELECT * FROM movies WHERE title = ?', (movie_title,)).fetchone()
 
+        if movie_data is None:
+            return 'Cannot find the movie. Consider adding this movie by << add \'title\' >> function.'
         self.title = movie_data[1]
         self.year = movie_data[2]
         self.runtime = movie_data[3]
@@ -214,7 +227,7 @@ class MovieDB(Movies):
         except sqlite3.Error as e:
             return "An error occurred:", e.args[0]
         finally:
-            self.sql_connection.close()
+            self._close()
 
     def update_movie(self, movie_title):
         """
@@ -225,7 +238,13 @@ class MovieDB(Movies):
 
         movie_data = get_movie_data(movie_title)
 
+        if not movie_data[0]:
+            print(f'Cannot retrieve data for {movie_title}. Please check spelling.')
+            return None
+
         self.title = movie_data.get('Title', None)
+        if self.title[-1] == ' ':
+            return f'Cannot update {self.title} due to extra space in title. Please use << clean >> function.'
         self.year = movie_data.get('Year', None)
         if movie_data.get('Runtime', None).split()[0].isdigit():
             self.runtime = int(movie_data.get('Runtime', None).split()[0])
@@ -245,15 +264,18 @@ class MovieDB(Movies):
 
         return self.save()
 
+    def add_movie(self, movie_title):
+        pass
+
 
 if __name__ == '__main__':
     # module's tests
-    from pprint import pprint
-    movie = MoviesSorted()
+    movie = MovieDB()
 
+    # movie = MoviesSorted()
     # s = movie.sort_by(selection=['title', 'runtime'], order_by=['runtime'], value='int')
     # print(s)
-    hs = movie.highscored()
+    # hs = movie.highscored()
     # print(hs['Runtime'])
     # print('Runtime:', hs['Runtime'][0][0], hs['Runtime'][0][1])
     # print('Box Office:', hs['Box Office'][0][0], hs['Box Office'][0][1])
