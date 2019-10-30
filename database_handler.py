@@ -5,7 +5,8 @@ from omdb import get_movie_data
 class Movies(object):
     def __init__(self):
         """
-        Initialize basic movie instance - it needs to be reinitialized or delete/create every time new instance is created
+        Initialize basic movie instance - it needs to be reinitialized
+        or delete/create every time new instance is created
         """
         self.title = None
         self.year = None
@@ -72,16 +73,16 @@ class MoviesSorted(Movies):
             selection_format = selection_format.replace("cast", "\"CAST\"")
             order_by_format = order_by_format.replace("cast", "\"CAST\"")
 
+        if 'runtime' in selection_format and 'runtime' in order_by_format:
+            order_by_format = order_by_format.replace("runtime", "CAST(runtime AS INT)")
+
         if value in ['int']:
             max_limit = len(self.c.execute("SELECT id FROM movies").fetchall())
             query_limit = max_limit
 
         try:
-            query = "SELECT {} FROM movies {} ORDER BY {} {} LIMIT {}".format(selection_format,
-                                                                              where_clause,
-                                                                              order_by_format,
-                                                                              order_way,
-                                                                              query_limit)
+            query = f"SELECT {selection_format} FROM movies {where_clause}" \
+                    f" ORDER BY {order_by_format} {order_way} LIMIT {query_limit}"
             output = self.c.execute(query).fetchall()
 
         except sqlite3.OperationalError as e:
@@ -117,6 +118,7 @@ class MoviesSorted(Movies):
         Returns list of (title:str, rating:str) of highest runtime
         :return: list
         """
+
         self._open()
         top_runtime = self.c.execute("SELECT title, runtime FROM movies ORDER BY CAST(runtime AS INT) DESC").fetchone()
         self._close()
@@ -137,6 +139,21 @@ class MoviesSorted(Movies):
                                         order_by=['imdb_rating'],
                                         query_limit=1)}
         return highscored
+
+    def filter_by(self, selection=('title', ), filtering_criterion=(), filtering_value=None):
+        self._open()
+        selection_format = ', '.join((str(x) for x in selection))
+        selection_format = selection_format.replace("cast", "\"CAST\"")
+        filtering_criterion = filtering_criterion.replace("cast", "\"CAST\"")
+        if filtering_value.isdigit():
+            query = f"SELECT {selection_format} FROM movies " \
+                    f"WHERE CAST({filtering_criterion} AS INT) > {filtering_value } LIMIT 10"
+        else:
+            query = f"SELECT {selection_format} FROM movies " \
+                    f"WHERE {filtering_criterion} LIKE '%{filtering_value}%' LIMIT 10"
+        output = self.c.execute(query).fetchall()
+        self._close()
+        return output
 
 
 class MovieDB(Movies):
@@ -270,7 +287,8 @@ class MovieDB(Movies):
 
 if __name__ == '__main__':
     # module's tests
-    movie = MovieDB()
+    movie = MoviesSorted()
+    print(movie.filter_by(selection=('title', 'language'), filtering_criterion='language', filtering_value='english'))
 
     # movie = MoviesSorted()
     # s = movie.sort_by(selection=['title', 'runtime'], order_by=['runtime'], value='int')

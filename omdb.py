@@ -1,4 +1,3 @@
-import os
 import requests
 from requests.exceptions import HTTPError
 API_KEY = '1033d244'

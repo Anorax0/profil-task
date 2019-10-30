@@ -35,17 +35,23 @@ def main():
     elif '--sort_by' in sys.argv or '-s' in sys.argv:
         movies = MoviesSorted()
         limit = 10
-        order_way = 'DESC'
         selection = (", ".join([str(x) for x in sys.argv[2:] if not x.isdigit()])).lower()
         if sys.argv[-1].isdigit():
             limit = int(sys.argv[-1])
-        print('----', selection)
 
         sorted_movies_list = movies.sort_by(selection=['title', selection],
                                             order_by=[selection],
                                             query_limit=limit)
         for sorted_movie in sorted_movies_list:
             print(sorted_movie)
+
+    elif '--filter_by' in sys.argv and len(sys.argv) == 4:
+        movies = MoviesSorted()
+        filtered_movies = movies.filter_by(selection=('title', sys.argv[2]),
+                                           filtering_criterion=sys.argv[2],
+                                           filtering_value=sys.argv[3])
+        for fil_mov in filtered_movies:
+            print(fil_mov[0]+':', fil_mov[1])
 
     elif '--highscores' in sys.argv or '-hs' in sys.argv:
         movies = MoviesSorted()
@@ -56,8 +62,6 @@ def main():
         print('Nominations:', highscored['Nominations'][1][0], highscored['Nominations'][1][1])
         print('Awards Won:', highscored['Nominations'][2][0], highscored['Nominations'][2][1])
         print('Imdb Rating:', highscored['Imdb Rating'][0][0], str(highscored['Imdb Rating'][0][1])+'/10')
-
-
     else:
         print(description)
         sys.exit()
