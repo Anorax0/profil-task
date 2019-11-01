@@ -89,6 +89,8 @@ class MoviesSorted(Movies):
             output = ['You are trying to access not existing value: ', e]
         finally:
             self._close()
+            if 'awards' in selection:
+                output.append(('Little tip:', 'To see awards details use --highscores or -hs.'))
             return output
 
     @staticmethod
@@ -140,20 +142,39 @@ class MoviesSorted(Movies):
                                         query_limit=1)}
         return highscored
 
-    def filter_by(self, selection=('title', ), filtering_criterion=(), filtering_value=None):
+    def filter_by(self, selection=('title', ), filtering_criterion=(), filtering_value=None, query_limit=10):
         self._open()
         selection_format = ', '.join((str(x) for x in selection))
         selection_format = selection_format.replace("cast", "\"CAST\"")
         filtering_criterion = filtering_criterion.replace("cast", "\"CAST\"")
-        if filtering_value.isdigit():
-            query = f"SELECT {selection_format} FROM movies " \
-                    f"WHERE CAST({filtering_criterion} AS INT) > {filtering_value } LIMIT 10"
-        else:
-            query = f"SELECT {selection_format} FROM movies " \
-                    f"WHERE {filtering_criterion} LIKE '%{filtering_value}%' LIMIT 10"
-        output = self.c.execute(query).fetchall()
+        try:
+            if filtering_value.isdigit():
+                query = f"SELECT {selection_format} FROM movies " \
+                        f"WHERE CAST({filtering_criterion} AS INT) > {filtering_value } LIMIT {query_limit}"
+            else:
+                query = f"SELECT {selection_format} FROM movies " \
+                        f"WHERE {filtering_criterion} LIKE '%{filtering_value}%' LIMIT {query_limit}"
+            output = self.c.execute(query).fetchall()
+        except sqlite3.OperationalError:
+            raise Exception('\n\nCannot procced query. Please check spelling or use << --help >> command.')
         self._close()
         return output
+
+    def compare(self, comparing_criterion, comparing_values):
+        self._open()
+        comparing_criterion = comparing_criterion.replace("cast", "\"CAST\"")
+
+        query_first = f'SELECT title, {comparing_criterion} FROM movies WHERE title="{comparing_values[0]}"'
+        query_second = f'SELECT title, {comparing_criterion} FROM movies WHERE title="{comparing_values[1]}"'
+
+        output_first = self.c.execute(query_first).fetchone()
+        output_second = self.c.execute(query_second).fetchone()
+
+        if comparing_criterion in ('year', 'runtime', 'imdb_rating', 'imdb_votes', 'box_office'):
+            print(comparing_criterion)
+
+        self._close()
+        return output_first, output_second
 
 
 class MovieDB(Movies):
@@ -255,31 +276,33 @@ class MovieDB(Movies):
 
         movie_data = get_movie_data(movie_title)
 
-        if not movie_data[0]:
-            print(f'Cannot retrieve data for {movie_title}. Please check spelling.')
-            return None
+        try:
+            # if not movie_data[0]:
+            #     raise Exception(f'Cannot retrieve data for {movie_title}. Please check spelling.')
 
-        self.title = movie_data.get('Title', None)
-        if self.title[-1] == ' ':
-            return f'Cannot update {self.title} due to extra space in title. Please use << clean >> function.'
-        self.year = movie_data.get('Year', None)
-        if movie_data.get('Runtime', None).split()[0].isdigit():
-            self.runtime = int(movie_data.get('Runtime', None).split()[0])
-        else:
-            self.runtime = 'N/A'
-        self.genre = movie_data.get('Genre', None)
-        self.director = movie_data.get('Director', None)
-        self.cast = movie_data.get('Actors', None)
-        self.writer = movie_data.get('Writer', None)
-        self.language = movie_data.get('Language', None)
-        self.country = movie_data.get('Country', None)
-        self.awards = movie_data.get('Awards', None)
-        self.imdb_rating = float(movie_data.get('imdbRating', None))
-        self.imdb_votes = int((movie_data.get('imdbVotes', None)).replace(",", ""))
-        if movie_data.get('BoxOffice', None) != 'N/A' and movie_data.get('BoxOffice', None) is not None:
-            self.box_office = int(movie_data.get('BoxOffice', None)[1:].replace(",", ""))
+            self.title = movie_data.get('Title', None)
+            if self.title[-1] == ' ':
+                return f'Cannot update {self.title} due to extra space in title. Please use << clean >> function.'
+            self.year = movie_data.get('Year', None)
+            if movie_data.get('Runtime', None).split()[0].isdigit():
+                self.runtime = int(movie_data.get('Runtime', None).split()[0])
+            else:
+                self.runtime = 'N/A'
+            self.genre = movie_data.get('Genre', None)
+            self.director = movie_data.get('Director', None)
+            self.cast = movie_data.get('Actors', None)
+            self.writer = movie_data.get('Writer', None)
+            self.language = movie_data.get('Language', None)
+            self.country = movie_data.get('Country', None)
+            self.awards = movie_data.get('Awards', None)
+            self.imdb_rating = float(movie_data.get('imdbRating', None))
+            self.imdb_votes = int((movie_data.get('imdbVotes', None)).replace(",", ""))
+            if movie_data.get('BoxOffice', None) != 'N/A' and movie_data.get('BoxOffice', None) is not None:
+                self.box_office = int(movie_data.get('BoxOffice', None)[1:].replace(",", ""))
 
-        return self.save()
+            return self.save()
+        except KeyError:
+            raise Exception('Cannot update - probably database needs to be cleaned - use << clean >> command.')
 
     def add_movie(self, movie_title):
         pass
@@ -287,12 +310,12 @@ class MovieDB(Movies):
 
 if __name__ == '__main__':
     # module's tests
-    movie = MoviesSorted()
-    print(movie.filter_by(selection=('title', 'language'), filtering_criterion='language', filtering_value='english'))
-
     # movie = MoviesSorted()
-    # s = movie.sort_by(selection=['title', 'runtime'], order_by=['runtime'], value='int')
-    # print(s)
+    # print(movie.filter_by(selection=('title', 'language'), filtering_criterion='language', filtering_value='english'))
+
+    movie = MoviesSorted()
+    s = movie.sort_by(selection=['title', 'runtime'], order_by=['runtime'], value='int')
+    print(s)
     # hs = movie.highscored()
     # print(hs['Runtime'])
     # print('Runtime:', hs['Runtime'][0][0], hs['Runtime'][0][1])
