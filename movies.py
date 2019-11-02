@@ -40,31 +40,40 @@ def main():
         if len(sys.argv) < 3:
             print('Incorrect amount of given arguments.')
             sys.exit()
-        movies = MoviesSorted()
-        limit = 10
-        selection = (", ".join([str(x) for x in sys.argv[2:] if not x.isdigit()])).lower()
-        if sys.argv[-1].isdigit():
-            limit = int(sys.argv[-1])
 
-        sorted_movies_list = movies.sort_by(selection=['title', selection],
-                                            order_by=[selection],
-                                            query_limit=limit)
-        for sorted_movie in sorted_movies_list:
-            print(sorted_movie)
+        if sys.argv[2] in options:
+            movies = MoviesSorted()
+            limit = 10
+            selection = (", ".join([str(x) for x in sys.argv[2:] if not x.isdigit()])).lower()
+            if sys.argv[-1].isdigit():
+                limit = int(sys.argv[-1])
+
+            sorted_movies_list = movies.sort_by(selection=['title', selection],
+                                                order_by=[selection],
+                                                query_limit=limit)
+            for sorted_movie in sorted_movies_list:
+                print(sorted_movie)
+        else:
+            print('Please check spelling.')
 
     elif '--filter_by' in sys.argv:
         if len(sys.argv) < 4:
             print('Please provide 2 arguments: filtering category and value you are looking for.')
             sys.exit()
-        if sys.argv[-1].isdigit():
-            query_limit = sys.argv[-1]
-        movies = MoviesSorted()
-        filtered_movies = movies.filter_by(selection=('title', sys.argv[2]),
-                                           filtering_criterion=sys.argv[2],
-                                           filtering_value=sys.argv[3],
-                                           query_limit=query_limit)
-        for fil_mov in filtered_movies:
-            print(fil_mov[0]+':', fil_mov[1])
+        if sys.argv[2] in options:
+            if sys.argv[-1].isdigit():
+                query_limit = sys.argv[-1]
+            movies = MoviesSorted()
+            query_limit = 10
+            filtered_movies = movies.filter_by(selection=('title', sys.argv[2]),
+                                               filtering_criterion=sys.argv[2],
+                                               filtering_value=sys.argv[3],
+                                               query_limit=query_limit)
+
+            for fil_mov in filtered_movies:
+                print(fil_mov[0]+':', fil_mov[1])
+        else:
+            print('Please check spelling.')
 
     elif '--highscores' in sys.argv or '-hs' in sys.argv:
         movies = MoviesSorted()
@@ -81,10 +90,20 @@ def main():
         if len(sys.argv) != 5:
             print('Incorrect amount of given arguments.')
             sys.exit()
-        if sys.argv[2] in options:
+        if sys.argv[2] in options+('oscars', 'nominations', 'wins'):
             movies = MoviesSorted()
             compare_movies = movies.compare(comparing_criterion=sys.argv[2],
                                             comparing_values=(sys.argv[3], sys.argv[4]))
+            print(compare_movies)
+        else:
+            print('Please check spelling.')
+
+    elif '--add' in sys.argv:
+        if len(sys.argv) == 3:
+            movie = MovieDB()
+            print(movie.add_movie(sys.argv[2]))
+        else:
+            print('Please provide movie title in quotation marks.')
 
     else:
         print(description)

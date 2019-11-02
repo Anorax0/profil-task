@@ -60,7 +60,7 @@ class MoviesSorted(Movies):
         """
         super(MoviesSorted, self).__init__()
 
-    def sort_by(self, selection=('title', ), where_clause=None, order_by=('year', ), order_way="DESC", query_limit=10,
+    def sort_by(self, selection=('title',), where_clause=None, order_by=('year',), order_way="DESC", query_limit=10,
                 value=None):
 
         # opens db connection
@@ -100,18 +100,18 @@ class MoviesSorted(Movies):
         top_other_wins = ['title', 0]
         for x in query:
             search = x[1].split()
-            if 'Oscars.' in search and isinstance((search.index('Oscars.')-1), int)\
-                    and search[search.index('Oscars.')-2] == 'Won':
+            if 'Oscars.' in search and isinstance((search.index('Oscars.') - 1), int) \
+                    and search[search.index('Oscars.') - 2] == 'Won':
                 if int(search[1]) > top_oscars[1]:
                     top_oscars = [x[0], int(search[1])]
 
-            if 'nominations.' in search and isinstance((search.index('nominations.')-1), int):
-                if int(search[search.index('nominations.')-1]) > top_nominations[1]:
-                    top_nominations = [x[0], int(search[search.index('nominations.')-1])]
+            if 'nominations.' in search and isinstance((search.index('nominations.') - 1), int):
+                if int(search[search.index('nominations.') - 1]) > top_nominations[1]:
+                    top_nominations = [x[0], int(search[search.index('nominations.') - 1])]
 
-            if 'wins' in search and isinstance((search.index('wins')-1), int):
-                if int(search[search.index('wins')-1]) > top_other_wins[1]:
-                    top_other_wins = [x[0], int(search[search.index('wins')-1])]
+            if 'wins' in search and isinstance((search.index('wins') - 1), int):
+                if int(search[search.index('wins') - 1]) > top_other_wins[1]:
+                    top_other_wins = [x[0], int(search[search.index('wins') - 1])]
 
         return top_oscars, top_nominations, top_other_wins
 
@@ -142,7 +142,7 @@ class MoviesSorted(Movies):
                                         query_limit=1)}
         return highscored
 
-    def filter_by(self, selection=('title', ), filtering_criterion=(), filtering_value=None, query_limit=10):
+    def filter_by(self, selection=('title',), filtering_criterion=(), filtering_value=None, query_limit=10):
         self._open()
         selection_format = ', '.join((str(x) for x in selection))
         selection_format = selection_format.replace("cast", "\"CAST\"")
@@ -150,7 +150,7 @@ class MoviesSorted(Movies):
         try:
             if filtering_value.isdigit():
                 query = f"SELECT {selection_format} FROM movies " \
-                        f"WHERE CAST({filtering_criterion} AS INT) > {filtering_value } LIMIT {query_limit}"
+                        f"WHERE CAST({filtering_criterion} AS INT) > {filtering_value} LIMIT {query_limit}"
             else:
                 query = f"SELECT {selection_format} FROM movies " \
                         f"WHERE {filtering_criterion} LIKE '%{filtering_value}%' LIMIT {query_limit}"
@@ -162,19 +162,75 @@ class MoviesSorted(Movies):
 
     def compare(self, comparing_criterion, comparing_values):
         self._open()
+        output = None
         comparing_criterion = comparing_criterion.replace("cast", "\"CAST\"")
 
-        query_first = f'SELECT title, {comparing_criterion} FROM movies WHERE title="{comparing_values[0]}"'
-        query_second = f'SELECT title, {comparing_criterion} FROM movies WHERE title="{comparing_values[1]}"'
+        if comparing_criterion in ('oscars', 'nominations', 'wins', 'awards'):
+            oscars_first, nominations_first, wins_first = self.extract_tops(
+                self.sort_by(selection=['title', 'awards'],
+                             where_clause=f'WHERE title="{comparing_values[0]}"',
+                             order_by=['AWARDS'],
+                             query_limit=1))
+            oscars_second, nominations_second, wins_second = self.extract_tops(
+                self.sort_by(selection=['title', 'awards'],
+                             where_clause=f'WHERE title="{comparing_values[1]}"',
+                             order_by=['AWARDS'],
+                             query_limit=100))
 
-        output_first = self.c.execute(query_first).fetchone()
-        output_second = self.c.execute(query_second).fetchone()
+            if int(oscars_first[1]) > int(oscars_second[1]):
+                output = f'Won Oscars of {oscars_first[0]} is greater' \
+                         f' than Oscars of {oscars_second[0]} [{oscars_first[1]} > {oscars_second[1]}]'
+            elif int(oscars_first[1]) < int(oscars_second[1]):
+                output = f'Won Oscars of {oscars_first[0]} is smaller' \
+                         f' than Oscars of {oscars_second[0]} [{oscars_first[1]} > {oscars_second[1]}]'
+            elif int(oscars_first[1]) == int(oscars_second[1]):
+                output = f'Won Oscars of {oscars_first[0]} is equal' \
+                         f' to Oscars of {oscars_second[0]} [{oscars_first[1]} > {oscars_second[1]}]'
 
-        if comparing_criterion in ('year', 'runtime', 'imdb_rating', 'imdb_votes', 'box_office'):
-            print(comparing_criterion)
+            if int(nominations_first[1]) > int(nominations_second[1]):
+                output += f'\nAmount of nominations of {nominations_first[0]} is greater than nominations of ' \
+                          f'{nominations_second[0]} [{nominations_first[1]} > {nominations_second[1]}]'
+            elif int(nominations_first[1]) < int(nominations_second[1]):
+                output += f'\nAmount of nominations of {nominations_first[0]} is smaller than nominations of ' \
+                          f'{nominations_second[0]} [{nominations_first[1]} > {nominations_second[1]}]'
+            elif int(nominations_first[1]) == int(nominations_second[1]):
+                output += f'\nAmount of nominations of {nominations_first[0]} is equal to nominations of ' \
+                          f'{nominations_second[0]} [{nominations_first[1]} > {nominations_second[1]}]'
+
+            if int(wins_first[1]) > int(wins_second[1]):
+                output += f'\nOther wins of {wins_first[0]} is greater' \
+                          f' than other wins of {wins_second[0]} [{wins_first[1]} > {wins_second[1]}]'
+            elif int(wins_first[1]) < int(wins_second[1]):
+                output += f'\nOther wins of {wins_first[0]} is smaller' \
+                          f' than other wins of {wins_second[0]} [{wins_first[1]} > {wins_second[1]}]'
+            elif int(wins_first[1]) == int(wins_second[1]):
+                output += f'\nOther wins of {wins_first[0]} is equal' \
+                          f' to other wins of {wins_second[0]} [{wins_first[1]} > {wins_second[1]}]'
+
+        elif comparing_criterion in ('year', 'runtime', 'imdb_rating', 'imdb_votes', 'box_office'):
+
+            query_first = f'SELECT title, {comparing_criterion} FROM movies WHERE title="{comparing_values[0]}"'
+            query_second = f'SELECT title, {comparing_criterion} FROM movies WHERE title="{comparing_values[1]}"'
+            output_first = self.c.execute(query_first).fetchone()
+            output_second = self.c.execute(query_second).fetchone()
+
+            if None in output_first or None in output_second:
+                output = 'Cannot compare value that do not exists.'
+            elif float(output_first[1]) > float(output_second[1]):
+                output = f'{comparing_criterion.title()} of {output_first[0]} is greater than ' \
+                         f'{comparing_criterion.title()} of {output_second[0]} [{output_first[1]} > {output_second[1]}]'
+            elif float(output_first[1]) == float(output_second[1]):
+                output = f'{comparing_criterion.title()} of {output_first[0]} is equal' \
+                         f' to {comparing_criterion} of {output_second[0]} [{output_first[1]} = {output_second[1]}]'
+            else:
+                output = f'{comparing_criterion.title()} of {output_first[0]} is smaller' \
+                         f' than {comparing_criterion} of {output_second[0]} [{output_first[1]} < {output_second[1]}]'
+
+            if output is None:
+                output = 'Nothing to show. Check spelling or accept the lack of data.'
 
         self._close()
-        return output_first, output_second
+        return output
 
 
 class MovieDB(Movies):
@@ -275,6 +331,8 @@ class MovieDB(Movies):
         """
 
         movie_data = get_movie_data(movie_title)
+        if False in movie_data:
+            return False
 
         try:
             # if not movie_data[0]:
@@ -305,7 +363,16 @@ class MovieDB(Movies):
             raise Exception('Cannot update - probably database needs to be cleaned - use << clean >> command.')
 
     def add_movie(self, movie_title):
-        pass
+        self._open()
+        self.c.execute(f'INSERT INTO movies (title) VALUES ("{movie_title}")')
+        self.sql_connection.commit()
+        adding_movie = self.update_movie(movie_title)
+
+        if adding_movie is False:
+            print(f'Cannot find movie {movie_title}. Please check spelling.')
+
+        self._close()
+        return f'{movie_title} added and updated in database.'
 
 
 if __name__ == '__main__':

@@ -22,4 +22,4 @@ def get_movie_data(movie):
 
 if __name__ == '__main__':
 
-    print(get_movie_data('Godzilla'))
+    print(get_movie_data('Kac Wawa'))
