@@ -7,4 +7,3 @@ After please use "clean" command.
 Next, follow instruction in terminal.
 
 Every file must be placed in same folder.
-
