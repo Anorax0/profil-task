@@ -62,10 +62,21 @@ class MoviesSorted(Movies):
 
     def sort_by(self, selection=('title',), where_clause=None, order_by=('year',), order_way="DESC", query_limit=10,
                 value=None):
+        """
+        Returns list of values sorted by specific criterions
+        :param selection: list [db columns]
+        :param where_clause: str
+        :param order_by: list [db columns]
+        :param order_way: str
+        :param query_limit: int
+        :param value: str
+        :return: list
+        """
 
         # opens db connection
         self._open()
         output = None
+
         selection_format = ', '.join((str(x) for x in selection))
         order_by_format = ', '.join(str(x) for x in order_by)
 
@@ -95,9 +106,15 @@ class MoviesSorted(Movies):
 
     @staticmethod
     def extract_tops(query):
+        """
+        Returns list of one top values in db [won oscars, most nominated and other wins]
+        :param query: sql query
+        :return: list
+        """
         top_oscars = ['title', 0]
         top_nominations = ['title', 0]
         top_other_wins = ['title', 0]
+
         for x in query:
             search = x[1].split()
             if 'Oscars.' in search and isinstance((search.index('Oscars.') - 1), int) \
@@ -127,6 +144,10 @@ class MoviesSorted(Movies):
         return top_runtime
 
     def highscored(self):
+        """
+        Return top values from each criterion [runtime, box_office, oscars, nominations, other wins and imdb_rating
+        :return: list
+        """
         highscored = {
             # I wanted to write runtime using sort_by method, but after a long time coding that, I use this, easier.
             'Runtime': self.get_top_runtime(),
@@ -143,10 +164,20 @@ class MoviesSorted(Movies):
         return highscored
 
     def filter_by(self, selection=('title',), filtering_criterion=(), filtering_value=None, query_limit=10):
+        """
+        Filters data from db based given criterions
+        :param selection: list [db columns]
+        :param filtering_criterion: list [db columns]
+        :param filtering_value: int/str
+        :param query_limit: int
+        :return: list
+        """
         self._open()
+
         selection_format = ', '.join((str(x) for x in selection))
         selection_format = selection_format.replace("cast", "\"CAST\"")
         filtering_criterion = filtering_criterion.replace("cast", "\"CAST\"")
+
         try:
             if filtering_value.isdigit():
                 query = f"SELECT {selection_format} FROM movies " \
@@ -156,12 +187,20 @@ class MoviesSorted(Movies):
                         f"WHERE {filtering_criterion} LIKE '%{filtering_value}%' LIMIT {query_limit}"
             output = self.c.execute(query).fetchall()
         except sqlite3.OperationalError:
-            raise Exception('\n\nCannot procced query. Please check spelling or use << --help >> command.')
-        self._close()
-        return output
+            raise Exception('\n\nCannot proceed query. Please check spelling or use << --help >> command.')
+        finally:
+            self._close()
+            return output
 
     def compare(self, comparing_criterion, comparing_values):
+        """
+        Retrieves dota from two records and comparing its values
+        :param comparing_criterion: str [db column]
+        :param comparing_values: str [movie title]
+        :return: str
+        """
         self._open()
+
         output = None
         comparing_criterion = comparing_criterion.replace("cast", "\"CAST\"")
 
@@ -247,6 +286,7 @@ class MovieDB(Movies):
         """
         # db needs to be cleaned due to extra space in title "The Green Mile "
         movie_list = self.get_movies_list()
+
         for name in movie_list:
             if len(name[0]) != len(name[0].strip()):
                 self.title = name[0].strip()
@@ -269,7 +309,9 @@ class MovieDB(Movies):
         movie_data = self.c.execute('SELECT * FROM movies WHERE title = ?', (movie_title,)).fetchone()
 
         if movie_data is None:
+            self._close()
             return 'Cannot find the movie. Consider adding this movie by << add \'title\' >> function.'
+
         self.title = movie_data[1]
         self.year = movie_data[2]
         self.runtime = movie_data[3]
@@ -335,9 +377,6 @@ class MovieDB(Movies):
             return False
 
         try:
-            # if not movie_data[0]:
-            #     raise Exception(f'Cannot retrieve data for {movie_title}. Please check spelling.')
-
             self.title = movie_data.get('Title', None)
             if self.title[-1] == ' ':
                 return f'Cannot update {self.title} due to extra space in title. Please use << clean >> function.'
@@ -363,6 +402,11 @@ class MovieDB(Movies):
             raise Exception('Cannot update - probably database needs to be cleaned - use << clean >> command.')
 
     def add_movie(self, movie_title):
+        """
+        Add new movie to database based on data from omdb API
+        :param movie_title: str
+        :return: str
+        """
         self._open()
         self.c.execute(f'INSERT INTO movies (title) VALUES ("{movie_title}")')
         self.sql_connection.commit()
@@ -376,18 +420,4 @@ class MovieDB(Movies):
 
 
 if __name__ == '__main__':
-    # module's tests
-    # movie = MoviesSorted()
-    # print(movie.filter_by(selection=('title', 'language'), filtering_criterion='language', filtering_value='english'))
-
-    movie = MoviesSorted()
-    s = movie.sort_by(selection=['title', 'runtime'], order_by=['runtime'], value='int')
-    print(s)
-    # hs = movie.highscored()
-    # print(hs['Runtime'])
-    # print('Runtime:', hs['Runtime'][0][0], hs['Runtime'][0][1])
-    # print('Box Office:', hs['Box Office'][0][0], hs['Box Office'][0][1])
-    # print('Oscars:', hs['Nominations'][0][0], hs['Nominations'][0][1])
-    # print('Nominations:', hs['Nominations'][1][0], hs['Nominations'][1][1])
-    # print('Awards Won:', hs['Nominations'][2][0], hs['Nominations'][2][1])
-    # print('Imdb Rating:', hs['Imdb Rating'][0][0], hs['Imdb Rating'][0][1])
+    pass
