@@ -407,16 +407,20 @@ class MovieDB(Movies):
         :param movie_title: str
         :return: str
         """
-        self._open()
-        self.c.execute(f'INSERT INTO movies (title) VALUES ("{movie_title}")')
-        self.sql_connection.commit()
-        adding_movie = self.update_movie(movie_title)
+        if 'Cannot' in self.get_movie_from_db(movie_title):
+            self._open()
+            self.c.execute(f'INSERT INTO movies (title) VALUES ("{movie_title}")')
+            self.sql_connection.commit()
+            adding_movie = self.update_movie(movie_title)
 
-        if adding_movie is False:
-            print(f'Cannot find movie {movie_title}. Please check spelling.')
+            if adding_movie is False:
+                print(f'Cannot find movie {movie_title}. Please check spelling.')
 
-        self._close()
-        return f'{movie_title} added and updated in database.'
+            self._close()
+            return f'{movie_title} added and updated in database.'
+        else:
+            self._close()
+            return 'Cannot add this movie. It already exists.'
 
 
 if __name__ == '__main__':
