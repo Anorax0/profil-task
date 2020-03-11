@@ -2,12 +2,14 @@ import sqlite3
 from omdb import get_movie_data
 
 
-class Movies(object):
+class Movies():
     def __init__(self):
         """
         Initialize basic movie instance - it needs to be reinitialized
         or delete/create every time new instance is created
         """
+        self.sql_connection = None
+        self.c = None
         self.title = None
         self.year = None
         self.runtime = None
@@ -29,7 +31,7 @@ class Movies(object):
         """
         self.sql_connection = sqlite3.connect('Backend_movies.sqlite')
         self.c = self.sql_connection.cursor()
-        return None
+        # return None
 
     def _close(self):
         """
@@ -37,7 +39,7 @@ class Movies(object):
         :return: None
         """
         self.sql_connection.close()
-        return None
+        # return None
 
     def get_movies_list(self):
         """
@@ -54,14 +56,14 @@ class Movies(object):
 
 
 class MoviesSorted(Movies):
-    def __init__(self):
-        """
-        Initialize class instance as child of Movies class
-        """
-        super(MoviesSorted, self).__init__()
+    # def __init__(self):
+    #     """
+    #     Initialize class instance as child of Movies class
+    #     """
+    #     super(MoviesSorted, self).__init__()
 
-    def sort_by(self, selection=('title',), where_clause=None, order_by=('year',), order_way="DESC", query_limit=10,
-                value=None):
+    def sort_by(self, selection=('title',), where_clause=None, order_by=('year',),
+                order_way="DESC", query_limit=10, value=None):
         """
         Returns list of values sorted by specific criterions
         :param selection: list [db columns]
@@ -96,13 +98,13 @@ class MoviesSorted(Movies):
                     f" ORDER BY {order_by_format} {order_way} LIMIT {query_limit}"
             output = self.c.execute(query).fetchall()
 
-        except sqlite3.OperationalError as e:
-            output = ['You are trying to access not existing value: ', e]
+        except sqlite3.OperationalError as error:
+            output = ['You are trying to access not existing value: ', error]
         finally:
             self._close()
             if 'awards' in selection:
                 output.append(('Little tip:', 'To see awards details use --highscores or -hs.'))
-            return output
+        return output
 
     @staticmethod
     def extract_tops(query):
@@ -115,20 +117,20 @@ class MoviesSorted(Movies):
         top_nominations = ['title', 0]
         top_other_wins = ['title', 0]
 
-        for x in query:
-            search = x[1].split()
+        for item in query:
+            search = item[1].split()
             if 'Oscars.' in search and isinstance((search.index('Oscars.') - 1), int) \
                     and search[search.index('Oscars.') - 2] == 'Won':
                 if int(search[1]) > top_oscars[1]:
-                    top_oscars = [x[0], int(search[1])]
+                    top_oscars = [item[0], int(search[1])]
 
             if 'nominations.' in search and isinstance((search.index('nominations.') - 1), int):
                 if int(search[search.index('nominations.') - 1]) > top_nominations[1]:
-                    top_nominations = [x[0], int(search[search.index('nominations.') - 1])]
+                    top_nominations = [item[0], int(search[search.index('nominations.') - 1])]
 
             if 'wins' in search and isinstance((search.index('wins') - 1), int):
                 if int(search[search.index('wins') - 1]) > top_other_wins[1]:
-                    top_other_wins = [x[0], int(search[search.index('wins') - 1])]
+                    top_other_wins = [item[0], int(search[search.index('wins') - 1])]
 
         return top_oscars, top_nominations, top_other_wins
 
@@ -139,7 +141,8 @@ class MoviesSorted(Movies):
         """
 
         self._open()
-        top_runtime = self.c.execute("SELECT title, runtime FROM movies ORDER BY CAST(runtime AS INT) DESC").fetchone()
+        query = "SELECT title, runtime FROM movies ORDER BY CAST(runtime AS INT) DESC"
+        top_runtime = self.c.execute(query).fetchone()
         self._close()
         return top_runtime
 
@@ -190,7 +193,7 @@ class MoviesSorted(Movies):
             raise Exception('\n\nCannot proceed query. Please check spelling or use << --help >> command.')
         finally:
             self._close()
-            return output
+        return output
 
     def compare(self, comparing_criterion, comparing_values):
         """
@@ -273,11 +276,14 @@ class MoviesSorted(Movies):
 
 
 class MovieDB(Movies):
-    def __init__(self):
-        """
-        Initialize class instance as child of Movies class
-        """
-        super(MovieDB, self).__init__()
+    """
+    Class handling with database
+    """
+    # def __init__(self):
+    #     """
+    #     Initialize class instance as child of Movies class
+    #     """
+    #     super(MovieDB, self).__init__()
 
     def clean(self):
         """
@@ -294,7 +300,7 @@ class MovieDB(Movies):
                 self.c.execute('UPDATE movies SET title = ? WHERE title = ?', (self.title, name[0]))
                 self.sql_connection.commit()
                 self._close()
-        return None
+        # return None
 
     def get_movie_from_db(self, movie_title=None):
         """
@@ -360,8 +366,8 @@ class MovieDB(Movies):
             self.sql_connection.commit()
             return f'Update done for "{self.title}" movie.'
 
-        except sqlite3.Error as e:
-            return "An error occurred:", e.args[0]
+        except sqlite3.Error as error:
+            return "An error occurred:", error.args[0]
         finally:
             self._close()
 

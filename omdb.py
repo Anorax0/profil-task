@@ -12,7 +12,8 @@ def get_movie_data(movie):
     """
     headers = {'accept': 'application/json'}
     try:
-        result = requests.get(f'http://www.omdbapi.com/?apikey={API_KEY}&t={movie}&type=movie', headers).json()
+        query = f'http://www.omdbapi.com/?apikey={API_KEY}&t={movie}&type=movie'
+        result = requests.get(query, headers).json()
         if result['Response'] == 'False':
             return False, f'Could not find movie named "{movie}". Please check spelling.'
         return result
